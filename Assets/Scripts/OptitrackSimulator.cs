@@ -6,29 +6,22 @@ using System.IO;
 
 public class OptitrackSimulator : MonoBehaviour {
     const int PORT = 8520;
-
     private Thread mainTread = null;
-    private Rect buttonRect = new Rect(0, 0, 100, 20);
-
-    private void Start() {
-
-    }
-
-    private void Update() {
-
-    }
 
     private void OnApplicationQuit() {
         endServer();
     }
 
     private void OnGUI() {
+        GUI.color = Color.gray;
+        GUI.TextArea(new Rect(0, 0, 200, 50), Network.player.ipAddress);
+        GUI.color = Color.white;
         if (mainTread == null) {
-            if (GUI.Button(buttonRect, "start optitrack")) {
+            if (GUI.Button(new Rect(200, 0, 200, 50), "start optitrack server")) {
                 startServer();
             }
         } else {
-            if (GUI.Button(buttonRect, "stop optitrack")) {
+            if (GUI.Button(new Rect(200, 0, 200, 50), "end optitrack server")) {
                 endServer();
             }
         }
@@ -36,7 +29,6 @@ public class OptitrackSimulator : MonoBehaviour {
 
     private void startServer() {
         string ipAddress = Network.player.ipAddress;
-        //string ipAddress = "127.0.0.1";
         mainTread = new Thread(() => hostServer(ipAddress));
         mainTread.Start();
     }
