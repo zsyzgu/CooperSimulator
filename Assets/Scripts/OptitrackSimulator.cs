@@ -35,8 +35,8 @@ public class OptitrackSimulator : MonoBehaviour {
     }
 
     private void startServer() {
-        //string ipAddress = Network.player.ipAddress;
-        string ipAddress = "127.0.0.1";
+        string ipAddress = Network.player.ipAddress;
+        //string ipAddress = "127.0.0.1";
         mainTread = new Thread(() => hostServer(ipAddress));
         mainTread.Start();
     }
