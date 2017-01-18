@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Net.Sockets;
 using System.Threading;
+using System.IO;
+using System.Text;
 
 public class CaptureSimulator : MonoBehaviour {
     const int PORT = 8888;
@@ -55,16 +57,23 @@ public class CaptureSimulator : MonoBehaviour {
     private void hostClient() {
         TcpClient client = new TcpClient();
         client.Connect(serverIP, PORT);
-        NetworkStream networkStream = client.GetStream();
+        Stream sr = new StreamReader(client.GetStream()).BaseStream;
+        Stream sw = new StreamWriter(client.GetStream()).BaseStream;
 
         while (mainThread != null) {
             if (imageData != null) {
-                networkStream.Write(imageData, 0, imageData.Length);
-                networkStream.Flush();
-                imageData = null;
+                try {
+                    sw.Write(imageData, 0, imageData.Length);
+                    sw.Flush();
+                    imageData = null;
+                    sr.ReadByte();
+                } catch {
+                    break;
+                }
             }
-            Thread.Sleep(10);
         }
+        
+        client.Close();
     }
 
     private void endClient() {
