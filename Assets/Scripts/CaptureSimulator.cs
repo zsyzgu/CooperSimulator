@@ -12,6 +12,7 @@ public class CaptureSimulator : MonoBehaviour {
     private WebCamTexture webCamTexture;
     private byte[] imageData;
     private string serverIP;
+    private int sleepTime = 50;
 
     void OnApplicationQuit() {
         endClient();
@@ -47,6 +48,9 @@ public class CaptureSimulator : MonoBehaviour {
                 endClient();
             }
         }
+        GUI.color = Color.white;
+        GUI.Label(new Rect(0, 100, 50, 20), "sleep time:");
+        sleepTime = int.Parse(GUI.TextArea(new Rect(50, 100, 50, 20), sleepTime.ToString()));
     }
 
     private void startClient() {
@@ -63,7 +67,14 @@ public class CaptureSimulator : MonoBehaviour {
         while (mainThread != null) {
             if (imageData != null) {
                 try {
-                    sw.Write(imageData, 0, imageData.Length);
+                    byte[] info = new byte[4];
+                    int len = imageData.Length;
+                    info[0] = (byte)captureID;
+                    info[1] = (byte)((len & 0xff0000) >> 16);
+                    info[2] = (byte)((len & 0xff00) >> 8);
+                    info[3] = (byte)(len & 0xff);
+                    sw.Write(info, 0, 4);
+                    sw.Write(imageData, 0, len);
                     sw.Flush();
                     imageData = null;
                     sr.ReadByte();
@@ -71,6 +82,7 @@ public class CaptureSimulator : MonoBehaviour {
                     break;
                 }
             }
+            Thread.Sleep(sleepTime);
         }
         
         client.Close();
