@@ -6,7 +6,7 @@ using System.IO;
 
 public class OptitrackSimulator : MonoBehaviour {
     const int PORT = 8520;
-    private Thread mainTread = null;
+    private Thread mainThread = null;
 
     private void OnApplicationQuit() {
         endServer();
@@ -16,7 +16,7 @@ public class OptitrackSimulator : MonoBehaviour {
         GUI.color = Color.gray;
         GUI.TextArea(new Rect(0, 0, 200, 50), Network.player.ipAddress);
         GUI.color = Color.white;
-        if (mainTread == null) {
+        if (mainThread == null) {
             if (GUI.Button(new Rect(200, 0, 200, 50), "start optitrack server")) {
                 startServer();
             }
@@ -29,8 +29,8 @@ public class OptitrackSimulator : MonoBehaviour {
 
     private void startServer() {
         string ipAddress = Network.player.ipAddress;
-        mainTread = new Thread(() => hostServer(ipAddress));
-        mainTread.Start();
+        mainThread = new Thread(() => hostServer(ipAddress));
+        mainThread.Start();
     }
 
     private void hostServer(string ipAddress) {
@@ -38,7 +38,7 @@ public class OptitrackSimulator : MonoBehaviour {
         TcpListener listener = new TcpListener(serverIP, PORT);
 
         listener.Start();
-        while (mainTread != null) {
+        while (mainThread != null) {
             if (listener.Pending()) {
                 TcpClient client = listener.AcceptTcpClient();
                 Thread thread = new Thread(() => msgThread(client));
@@ -50,14 +50,14 @@ public class OptitrackSimulator : MonoBehaviour {
     }
 
     private void endServer() {
-        mainTread = null;
+        mainThread = null;
     }
 
     private void msgThread(TcpClient client) {
         StreamWriter sw = new StreamWriter(client.GetStream());
 
         float ry = 0;
-        while (mainTread != null) {
+        while (mainThread != null) {
             sw.WriteLine("begin");
             sw.WriteLine("rb 0 0 0 1 0 " + ry.ToString() + " 0");
             sw.WriteLine("end");
@@ -65,5 +65,7 @@ public class OptitrackSimulator : MonoBehaviour {
             Thread.Sleep(10);
             ry += 1.0f;
         }
+
+        client.Close();
     }
 }

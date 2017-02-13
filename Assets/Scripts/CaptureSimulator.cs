@@ -1,7 +1,9 @@
 ﻿using UnityEngine;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.IO;
+using System;
 using System.Text;
 
 public class CaptureSimulator : MonoBehaviour {
@@ -11,56 +13,68 @@ public class CaptureSimulator : MonoBehaviour {
     public int captureID = 0;
     private WebCamTexture webCamTexture;
     private byte[] imageData;
-    private string serverIP;
-    private int sleepTime = 50;
+    private bool imageDataLock = false;
 
     void OnApplicationQuit() {
-        endClient();
+        endServer();
     }
 
     void Start() {
         webCamTexture = new WebCamTexture();
         webCamTexture.Play();
-        serverIP = Network.player.ipAddress;
     }
 
     void Update() {
         if (mainThread != null) {
             Texture2D texture = new Texture2D(webCamTexture.width, webCamTexture.height);
             texture.SetPixels(webCamTexture.GetPixels());
+            while (imageDataLock) {
+                Thread.Sleep(1);
+            }
             imageData = texture.EncodeToJPG();
             Destroy(texture);
         }
     }
 
     void OnGUI() {
+        GUI.color = Color.gray;
+        GUI.TextArea(new Rect(0, 50, 200, 50), Network.player.ipAddress);
+        GUI.color = Color.white;
         if (mainThread == null) {
-            GUI.color = Color.white;
-            serverIP = GUI.TextArea(new Rect(0, 50, 200, 50), serverIP);
-            if (GUI.Button(new Rect(200, 50, 200, 50), "connect to teacher")) {
-                startClient();
+            if (GUI.Button(new Rect(200, 50, 200, 50), "start capture server")) {
+                startServer();
             }
         } else {
-            GUI.color = Color.gray;
-            GUI.TextArea(new Rect(0, 50, 200, 50), serverIP);
-            GUI.color = Color.white;
-            if (GUI.Button(new Rect(200, 50, 200, 50), "disconnect")) {
-                endClient();
+            if (GUI.Button(new Rect(200, 50, 200, 50), "end capture server")) {
+                endServer();
             }
         }
-        GUI.color = Color.white;
-        GUI.Label(new Rect(0, 100, 50, 20), "sleep time:");
-        sleepTime = int.Parse(GUI.TextArea(new Rect(50, 100, 50, 20), sleepTime.ToString()));
     }
 
-    private void startClient() {
-        mainThread = new Thread(hostClient);
+    private void startServer() {
+        imageDataLock = false;
+        string ipAddress = Network.player.ipAddress;
+        mainThread = new Thread(() => hostServer(ipAddress));
         mainThread.Start();
     }
 
-    private void hostClient() {
-        TcpClient client = new TcpClient();
-        client.Connect(serverIP, PORT);
+    private void hostServer(string ipAddress) {
+        IPAddress serverIP = IPAddress.Parse(ipAddress);
+        TcpListener listener = new TcpListener(serverIP, PORT);
+
+        listener.Start();
+        while (mainThread != null) {
+            if (listener.Pending()) {
+                TcpClient client = listener.AcceptTcpClient();
+                Thread thread = new Thread(() => msgThread(client));
+                thread.Start();
+            }
+            Thread.Sleep(10);
+        }
+        listener.Stop();
+    }
+
+    private void msgThread(TcpClient client) {
         Stream sr = new StreamReader(client.GetStream()).BaseStream;
         Stream sw = new StreamWriter(client.GetStream()).BaseStream;
 
@@ -68,6 +82,7 @@ public class CaptureSimulator : MonoBehaviour {
             if (imageData != null) {
                 try {
                     byte[] info = new byte[4];
+                    imageDataLock = true;
                     int len = imageData.Length;
                     info[0] = (byte)captureID;
                     info[1] = (byte)((len & 0xff0000) >> 16);
@@ -75,6 +90,7 @@ public class CaptureSimulator : MonoBehaviour {
                     info[3] = (byte)(len & 0xff);
                     sw.Write(info, 0, 4);
                     sw.Write(imageData, 0, len);
+                    imageDataLock = false;
                     sw.Flush();
                     imageData = null;
                     sr.ReadByte();
@@ -82,13 +98,12 @@ public class CaptureSimulator : MonoBehaviour {
                     break;
                 }
             }
-            Thread.Sleep(sleepTime);
         }
-        
+
         client.Close();
     }
 
-    private void endClient() {
+    private void endServer() {
         mainThread = null;
     }
 }
