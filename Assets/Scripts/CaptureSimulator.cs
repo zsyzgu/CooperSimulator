@@ -98,6 +98,7 @@ public class CaptureSimulator : MonoBehaviour {
                     break;
                 }
             }
+            Thread.Sleep(50);
         }
 
         client.Close();
