@@ -55,15 +55,13 @@ public class OptitrackSimulator : MonoBehaviour {
 
     private void msgThread(TcpClient client) {
         StreamWriter sw = new StreamWriter(client.GetStream());
-
-        float ry = 0;
+        
         while (mainThread != null) {
             sw.WriteLine("begin");
-            sw.WriteLine("rb 0 0 0 1 0 " + ry.ToString() + " 0");
+            sw.WriteLine("rb 0 0 0 2 0 0 0");
             sw.WriteLine("end");
             sw.Flush();
             Thread.Sleep(10);
-            ry += 1.0f;
         }
 
         client.Close();
