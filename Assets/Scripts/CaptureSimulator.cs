@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿#define FACE_DETECT
+
+using UnityEngine;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -13,6 +15,8 @@ public class CaptureSimulator : MonoBehaviour {
     public int captureID = 0;
     private WebCamTexture webCamTexture;
     private byte[] imageData;
+    private int imageH;
+    private int imageW;
     private bool imageDataLock = false;
 
     void OnApplicationQuit() {
@@ -28,11 +32,26 @@ public class CaptureSimulator : MonoBehaviour {
         if (mainThread != null) {
             Texture2D texture = new Texture2D(webCamTexture.width, webCamTexture.height);
             texture.SetPixels(webCamTexture.GetPixels());
+
+            int x = 0;
+            int y = 0;
+            int height = webCamTexture.height;
+            int width = webCamTexture.width;
+#if FACE_DETECT
+            if (FaceDetection.faceDetect(texture, out x, out y, out height, out width)) {
+                Destroy(texture);
+                texture = new Texture2D(width, height);
+                texture.SetPixels(webCamTexture.GetPixels(x, y, width, height));
+            }
+#endif
+
             while (imageDataLock) {
                 Thread.Sleep(1);
             }
             imageData = texture.EncodeToJPG();
             Destroy(texture);
+            imageH = height;
+            imageW = width;
         }
     }
 
@@ -49,6 +68,7 @@ public class CaptureSimulator : MonoBehaviour {
                 endServer();
             }
         }
+        GUI.DrawTexture(new Rect(0, 100, 480, 480), webCamTexture);
     }
 
     private void startServer() {
@@ -81,14 +101,18 @@ public class CaptureSimulator : MonoBehaviour {
         while (mainThread != null) {
             if (imageData != null) {
                 try {
-                    byte[] info = new byte[4];
+                    byte[] info = new byte[8];
                     imageDataLock = true;
                     int len = imageData.Length;
                     info[0] = (byte)captureID;
                     info[1] = (byte)((len & 0xff0000) >> 16);
                     info[2] = (byte)((len & 0xff00) >> 8);
                     info[3] = (byte)(len & 0xff);
-                    sw.Write(info, 0, 4);
+                    info[4] = (byte)((imageH & 0xff00) >> 8);
+                    info[5] = (byte)(imageH & 0xff);
+                    info[6] = (byte)((imageW & 0xff00) >> 8);
+                    info[7] = (byte)(imageW & 0xff);
+                    sw.Write(info, 0, 8);
                     sw.Write(imageData, 0, len);
                     imageDataLock = false;
                     sw.Flush();
