@@ -33,20 +33,24 @@ public class CaptureSimulator : MonoBehaviour {
             Texture2D texture = new Texture2D(webCamTexture.width, webCamTexture.height);
             texture.SetPixels(webCamTexture.GetPixels());
 
-            int x = 0;
-            int y = 0;
             int height = webCamTexture.height;
             int width = webCamTexture.width;
 #if FACE_DETECT
+            int x = 0;
+            int y = 0;
             if (FaceDetection.faceDetect(texture, out x, out y, out height, out width)) {
                 Destroy(texture);
                 texture = new Texture2D(width, height);
-                texture.SetPixels(webCamTexture.GetPixels(x, y, width, height));
+                texture.SetPixels(webCamTexture.GetPixels(x, webCamTexture.height - y - height, width, height));
             }
 #endif
-
+            int timeout = 1000;
             while (imageDataLock) {
                 Thread.Sleep(1);
+                if (--timeout == 0) {
+                    imageDataLock = false;
+                    break;
+                }
             }
             imageData = texture.EncodeToJPG();
             Destroy(texture);
@@ -114,8 +118,8 @@ public class CaptureSimulator : MonoBehaviour {
                     info[7] = (byte)(imageW & 0xff);
                     sw.Write(info, 0, 8);
                     sw.Write(imageData, 0, len);
-                    imageDataLock = false;
                     sw.Flush();
+                    imageDataLock = false;
                     imageData = null;
                     sr.ReadByte();
                 } catch {

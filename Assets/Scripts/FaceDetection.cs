@@ -15,7 +15,15 @@ public class FaceDetection : MonoBehaviour {
         Mat image = Mat.FromImageData(texture.EncodeToJPG());
         var faces = cascade.DetectMultiScale(image);
         if (faces.Length > 0) {
-            var face = faces[0];
+            int id = 0;
+            int maxArea = 0;
+            for (int i = 0; i < faces.Length; i++) {
+                if (faces[i].Height * faces[i].Width > maxArea) {
+                    id = i;
+                    maxArea = faces[i].Height * faces[i].Width;
+                }
+            }
+            var face = faces[id];
             x = face.X;
             y = face.Y;
             width = face.Width;
