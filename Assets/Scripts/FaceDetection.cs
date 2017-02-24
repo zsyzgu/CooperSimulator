@@ -6,6 +6,7 @@ using System;
 
 public class FaceDetection : MonoBehaviour {
     static CascadeClassifier cascade;
+    static OpenCvSharp.CPlusPlus.Rect lastFace;
     
     void Awake() {
         cascade = new CascadeClassifier(Application.dataPath + @"/haarcascade_frontalface_alt.xml");
@@ -24,16 +25,32 @@ public class FaceDetection : MonoBehaviour {
                 }
             }
             var face = faces[id];
+            if (lastFace != new OpenCvSharp.CPlusPlus.Rect()) {
+                double k = 0.5;
+                face.X = (int)(face.X * k + lastFace.X * (1 - k));
+                face.Y = (int)(face.Y * k + lastFace.Y * (1 - k));
+                face.Width = (int)(face.Width * k + lastFace.Width * (1 - k));
+                face.Height = (int)(face.Height * k + lastFace.Height * (1 - k));
+            }
             x = face.X;
             y = face.Y;
             width = face.Width;
             height = face.Height;
+            lastFace = face;
             return true;
         }
-        x = 0;
-        y = 0;
-        width = 0;
-        height = 0;
-        return false;
+        if (lastFace != new OpenCvSharp.CPlusPlus.Rect()) {
+            x = lastFace.X;
+            y = lastFace.Y;
+            width = lastFace.Width;
+            height = lastFace.Height;
+            return true;
+        } else {
+            x = 0;
+            y = 0;
+            width = 0;
+            height = 0;
+            return false;
+        }
     }
 }
